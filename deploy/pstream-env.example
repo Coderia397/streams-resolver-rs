@@ -22,3 +22,12 @@ export DEPLOY_SECRET=''
 # already on a mobile IP, which is most of why the resolver lives there, so
 # this is normally left empty.
 export RESIDENTIAL_PROXY_URL=''
+
+# Browsers allowed to call the resolver, in addition to the built in list
+# (streams.watch, its help host, the previous pstream.watch and local dev servers).
+# Comma separated, no trailing slash. Use it for a staging site or a new domain
+# so adding one does not need a new build.
+export ALLOWED_ORIGINS=''
+
+# The site a refused browser is pointed at. Defaults to https://streams.watch.
+export CANONICAL_ORIGIN=''

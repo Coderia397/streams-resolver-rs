@@ -1,7 +1,7 @@
 # pstream-resolver-rs
 
-The stream resolver behind [pstream.watch](https://pstream.watch). It runs on
-a phone.
+The stream resolver behind [streams.watch](https://streams.watch), served at
+`resolver.streams.watch`. It runs on a phone.
 
 Given a TMDB id it asks thirteen providers in parallel for a playable stream,
 returns every one that answered, and proxies the playback traffic for the
