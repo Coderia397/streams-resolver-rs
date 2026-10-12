@@ -1,5 +1,5 @@
-use pstream_shared::extractors::run_all;
-use pstream_shared::models::MediaKind;
+use streams_shared::extractors::run_all;
+use streams_shared::models::MediaKind;
 use std::time::Duration;
 
 #[tokio::test]

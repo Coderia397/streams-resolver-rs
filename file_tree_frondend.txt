@@ -1,8 +1,8 @@
 # P-Stream Frontend — File Tree
 # Generated: 2026-09-09 10:12:00
-# Root: /home/ibrahim/code/pstream/pstream-resolver-rs
+# Root: /home/ibrahim/code/streams/streams-resolver-rs
 
-pstream-resolver-rs/
+streams-resolver-rs/
 ├── .cargo/
 │   └── config.toml  (22 lines)
 ├── .feedback/
@@ -87,9 +87,9 @@ pstream-resolver-rs/
 │       │   └── stream_probe.rs  (38 lines)
 │       └── Cargo.toml  (28 lines)
 ├── deploy/
-│   ├── pstream-env.example  (24 lines)
+│   ├── streams-env.example  (24 lines)
 │   ├── README.md  (111 lines)
-│   └── start-pstream.sh  (139 lines)
+│   └── start-streams.sh  (139 lines)
 ├── .gitignore  (2 lines)
 ├── Cargo.lock  (2,155 lines)
 ├── Cargo.toml  (49 lines)

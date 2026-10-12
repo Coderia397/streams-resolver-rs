@@ -1,4 +1,4 @@
-# pstream-resolver-rs
+# streams-resolver-rs
 
 The stream resolver behind [streams.watch](https://streams.watch), served at
 `resolver.streams.watch`. It runs on a phone.

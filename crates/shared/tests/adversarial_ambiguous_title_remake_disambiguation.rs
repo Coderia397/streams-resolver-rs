@@ -2,12 +2,12 @@
 //! Era Remakes, Subtitle/Sequel Collisions, Timezone Boundary Dates,
 //! and Total Elimination of "Random/Wrong Video" Playback.
 
-use pstream_shared::extractors::bstsrs::parse_search_show_slug;
-use pstream_shared::extractors::dramacool::parse_search_slug;
-use pstream_shared::extractors::moviebox::{
+use streams_shared::extractors::bstsrs::parse_search_show_slug;
+use streams_shared::extractors::dramacool::parse_search_slug;
+use streams_shared::extractors::moviebox::{
     match_search_item, parse_release_year, SearchItem,
 };
-use pstream_shared::utils::matches_year_tolerance;
+use streams_shared::utils::matches_year_tolerance;
 
 // =========================================================================
 // 1. Movie Remakes Across Eras (Identical Titles from Different Decades)

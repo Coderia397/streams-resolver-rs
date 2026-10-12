@@ -1,10 +1,10 @@
 [package]
-name    = "pstream-shared"
+name    = "streams-shared"
 edition.workspace = true
 version.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Provider extractors, HTTP clients, proxy and policy shared by the pstream resolver and backend"
+description = "Provider extractors, HTTP clients, proxy and policy shared by the streams resolver and backend"
 
 [dependencies]
 tokio = { workspace = true, features = ["rt", "macros"] }

@@ -1,8 +1,8 @@
 //! Live dynamic probe tests for titles like Spider-Man: No Way Home and multi-source resolution.
 
-use pstream_shared::extractors::{moviebox, run_all};
-use pstream_shared::models::MediaKind;
-use pstream_shared::utils::quality_rank;
+use streams_shared::extractors::{moviebox, run_all};
+use streams_shared::models::MediaKind;
+use streams_shared::utils::quality_rank;
 use std::time::Instant;
 
 #[tokio::test]

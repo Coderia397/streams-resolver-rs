@@ -52,16 +52,16 @@ jobs:
       - name: Checksum and stage
         id: stage
         run: |
-          BIN=target/aarch64-unknown-linux-musl/release/pstream-resolver
+          BIN=target/aarch64-unknown-linux-musl/release/streams-resolver
           file "$BIN"
           # A dynamically linked binary would fail on the device with a
           # confusing loader error, so refuse to publish one.
           file "$BIN" | grep -q "statically linked" || {
             echo "::error::binary is not statically linked"; exit 1; }
           mkdir -p dist
-          cp "$BIN" dist/pstream-resolver-aarch64
-          sha256sum dist/pstream-resolver-aarch64 | cut -d' ' -f1 > dist/pstream-resolver-aarch64.sha256
-          echo "sha=$(cat dist/pstream-resolver-aarch64.sha256)" >> "$GITHUB_OUTPUT"
+          cp "$BIN" dist/streams-resolver-aarch64
+          sha256sum dist/streams-resolver-aarch64 | cut -d' ' -f1 > dist/streams-resolver-aarch64.sha256
+          echo "sha=$(cat dist/streams-resolver-aarch64.sha256)" >> "$GITHUB_OUTPUT"
           ls -la dist/
 
       - name: Publish to the rolling `latest` release
@@ -78,7 +78,7 @@ jobs:
             The device updater polls this release and swaps the binary in when
             the checksum changes.
           files: |
-            dist/pstream-resolver-aarch64
-            dist/pstream-resolver-aarch64.sha256
+            dist/streams-resolver-aarch64
+            dist/streams-resolver-aarch64.sha256
           # Move the tag so `latest` always points at this build.
           make_latest: true

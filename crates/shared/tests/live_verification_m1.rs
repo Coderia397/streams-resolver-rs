@@ -1,7 +1,7 @@
 //! Live Empirical Verification Suite for MovieBox Live API and Resolver Concurrency (Milestone 1).
 
-use pstream_shared::extractors::{moviebox, nontongo, run_all};
-use pstream_shared::models::MediaKind;
+use streams_shared::extractors::{moviebox, nontongo, run_all};
+use streams_shared::models::MediaKind;
 use std::time::{Duration, Instant};
 
 #[tokio::test]

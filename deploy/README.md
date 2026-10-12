@@ -34,15 +34,15 @@ adb shell "settings put global settings_enable_monitor_phantom_procs false"
 
 ```sh
 cloudflared tunnel login
-cloudflared tunnel create pstream-resolver
-cloudflared tunnel route dns pstream-resolver resolver.example.com
+cloudflared tunnel create streams-resolver
+cloudflared tunnel route dns streams-resolver resolver.example.com
 ```
 
 **6. Secrets**
 
 ```sh
-cp pstream-env.example ~/.pstream-env
-chmod 600 ~/.pstream-env
+cp streams-env.example ~/.streams-env
+chmod 600 ~/.streams-env
 # then edit it
 ```
 
@@ -50,17 +50,17 @@ chmod 600 ~/.pstream-env
 
 ```sh
 mkdir -p ~/.termux/boot
-cp start-pstream.sh ~/.termux/boot/start-pstream.sh
-chmod 700 ~/.termux/boot/start-pstream.sh
+cp start-streams.sh ~/.termux/boot/start-streams.sh
+chmod 700 ~/.termux/boot/start-streams.sh
 ```
 
 **8. First binary** — the updater only replaces an existing file, so seed it:
 
 ```sh
-curl -fsSL -o ~/pstream-resolver-rs \
-  https://github.com/Coderia397/pstream-resolver-rs/releases/latest/download/pstream-resolver-aarch64
-chmod 755 ~/pstream-resolver-rs
-sh ~/.termux/boot/start-pstream.sh
+curl -fsSL -o ~/streams-resolver-rs \
+  https://github.com/Coderia397/streams-resolver-rs/releases/latest/download/streams-resolver-aarch64
+chmod 755 ~/streams-resolver-rs
+sh ~/.termux/boot/start-streams.sh
 ```
 
 ## After that
@@ -81,7 +81,7 @@ that is **not** PID 1 — a PPid of 1 means the supervisor died and nothing will
 restart that process:
 
 ```sh
-ps -A -o PID,PPID,NAME | grep -E 'pstream-resolve|cloudflared'
+ps -A -o PID,PPID,NAME | grep -E 'streams-resolve|cloudflared'
 ```
 
 ## When it breaks
@@ -103,9 +103,9 @@ UI. Check `curl localhost:8790/`.
 over a running executable. Write beside it and rename:
 
 ```sh
-cat new-binary > ~/.res.new && chmod 755 ~/.res.new && mv ~/.res.new ~/pstream-resolver-rs
-pkill -x pstream-resolve
+cat new-binary > ~/.res.new && chmod 755 ~/.res.new && mv ~/.res.new ~/streams-resolver-rs
+pkill -x streams-resolve
 ```
 
-Note `pstream-resolve`, not the full name — Linux truncates process names to
-15 characters, so `pkill -x pstream-resolver-rs` matches nothing.
+Note `streams-resolve`, not the full name — Linux truncates process names to
+15 characters, so `pkill -x streams-resolver-rs` matches nothing.

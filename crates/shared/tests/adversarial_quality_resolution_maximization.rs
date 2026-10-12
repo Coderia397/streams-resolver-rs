@@ -1,13 +1,13 @@
 //! Empirical Adversarial Test Suite for Stream Quality, Resolution Maximization,
 //! SD Trailer Bug Elimination, and Cross-Provider Output Ordering.
 
-use pstream_shared::extractors::bstsrs;
-use pstream_shared::extractors::dramacool;
-use pstream_shared::extractors::moviebox::{
+use streams_shared::extractors::bstsrs;
+use streams_shared::extractors::dramacool;
+use streams_shared::extractors::moviebox::{
     extract_stream_from_html, match_search_item, SearchItem,
 };
-use pstream_shared::models::Source;
-use pstream_shared::utils::{
+use streams_shared::models::Source;
+use streams_shared::utils::{
     matches_year_tolerance, normalize_quality, quality_rank,
     sort_sources_by_quality,
 };

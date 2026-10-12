@@ -4,7 +4,7 @@
 # HTTP clients, the proxy and manifest rewriter, the cache, and the CORS and
 # rate-limit policy. `resolver` is the binary that runs on the phone.
 #
-# The giga backend (pstream-backend-rs) depends on `shared` as a git
+# The giga backend (streams-backend-rs) depends on `shared` as a git
 # dependency, so the 13 extractors and the proxy exist in exactly one place
 # rather than being copied between the two services and drifting apart.
 
@@ -14,7 +14,7 @@ members  = ["crates/shared", "crates/resolver"]
 
 [workspace.package]
 license = "MIT"
-repository = "https://github.com/Coderia397/pstream-resolver-rs"
+repository = "https://github.com/Coderia397/streams-resolver-rs"
 edition = "2021"
 version = "0.1.0"
 

@@ -1,4 +1,4 @@
-//! pstream local-resolver — Rust port of `local-resolver/server.mjs`.
+//! streams local-resolver — Rust port of `local-resolver/server.mjs`.
 //!
 //! Ships as one static aarch64-musl binary so the phone needs no runtime and
 //! no node_modules. Route surface and JSON shapes match the JS server, since
@@ -11,7 +11,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use pstream_shared::{
+use streams_shared::{
     cache, cors, extractors, health, probe, ratelimit, subdl, utils,
     youtube, MediaKind, ProviderResult, Source,
 };
@@ -461,7 +461,7 @@ mod tests {
             Source::direct_m3u8("https://cdn.prov6.com/uhd_4k.m3u8", "2160p").tagged("Prov6", "prov6"),
         ];
 
-        sources.sort_by(compare_sources_adaptive);
+        sources.sort_by(streams_shared::utils::compare_sources_adaptive);
 
         // 1. Direct 4K UHD (2160p)
         assert_eq!(sources[0].quality, "2160p");

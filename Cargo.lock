@@ -1050,42 +1050,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "33cb294fe86a74cbcf50d4445b37da762029549ebeea341421c7c70370f86cac"
 
 [[package]]
-name = "pstream-resolver"
-version = "0.1.0"
-dependencies = [
- "axum",
- "pstream-shared",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "pstream-shared"
-version = "0.1.0"
-dependencies = [
- "aes-gcm",
- "anyhow",
- "axum",
- "base64",
- "bytes",
- "futures",
- "hex",
- "hmac",
- "md5",
- "once_cell",
- "pbkdf2",
- "regex",
- "reqwest",
- "serde",
- "serde_json",
- "sha2",
- "tokio",
- "urlencoding",
- "wasmi",
-]
-
-[[package]]
 name = "publicsuffix"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1472,6 +1436,42 @@ name = "stable_deref_trait"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ce2be8dc25455e1f91df71bfa12ad37d7af1092ae736f3a6cd0e37bc7810596"
+
+[[package]]
+name = "streams-resolver"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "serde",
+ "serde_json",
+ "streams-shared",
+ "tokio",
+]
+
+[[package]]
+name = "streams-shared"
+version = "0.1.0"
+dependencies = [
+ "aes-gcm",
+ "anyhow",
+ "axum",
+ "base64",
+ "bytes",
+ "futures",
+ "hex",
+ "hmac",
+ "md5",
+ "once_cell",
+ "pbkdf2",
+ "regex",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tokio",
+ "urlencoding",
+ "wasmi",
+]
 
 [[package]]
 name = "string-interner"

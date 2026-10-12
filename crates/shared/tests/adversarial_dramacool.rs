@@ -4,13 +4,13 @@
 //! HTML search parsing, malformed DOM robustness, concurrency, aggregator integration,
 //! and live multi-drama stream extraction.
 
-use pstream_shared::extractors::dramacool::{
+use streams_shared::extractors::dramacool::{
     build_episode_path, extract_sources_from_html, is_video_source, normalize_url,
     parse_search_slug, scrape, search_drama_slug, slugify, ID,
 };
-use pstream_shared::extractors::run_all;
-use pstream_shared::http::{get_text_with, PROXY};
-use pstream_shared::models::MediaKind;
+use streams_shared::extractors::run_all;
+use streams_shared::http::{get_text_with, PROXY};
+use streams_shared::models::MediaKind;
 use std::time::{Duration, Instant};
 
 // =========================================================================

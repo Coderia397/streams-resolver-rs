@@ -1,5 +1,5 @@
-use pstream_shared::models::MediaKind;
-use pstream_shared::extractors::{oneshows, moviebox, bstsrs};
+use streams_shared::models::MediaKind;
+use streams_shared::extractors::{oneshows, moviebox, bstsrs};
 
 #[tokio::test]
 #[ignore]

@@ -1,18 +1,18 @@
 [package]
-name    = "pstream-resolver"
+name    = "streams-resolver"
 edition.workspace = true
 version.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "The pstream resolver that runs on the phone — one static aarch64-musl binary"
+description = "The streams resolver that runs on the phone — one static aarch64-musl binary"
 build = "build.rs"
 
 [[bin]]
-name = "pstream-resolver"
+name = "streams-resolver"
 path = "src/main.rs"
 
 [dependencies]
-pstream-shared = { path = "../shared" }
+streams-shared = { path = "../shared" }
 
 tokio.workspace      = true
 axum.workspace       = true

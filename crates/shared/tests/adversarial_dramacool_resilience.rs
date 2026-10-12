@@ -6,8 +6,8 @@
 //! 3. Live E2E resolution and source metadata validation (URL, quality, provider tags, referer).
 //! 4. Non-regression across other extractors.
 
-use pstream_shared::extractors::dramacool::{scrape, ID};
-use pstream_shared::models::MediaKind;
+use streams_shared::extractors::dramacool::{scrape, ID};
+use streams_shared::models::MediaKind;
 use std::time::{Duration, Instant};
 
 #[tokio::test]

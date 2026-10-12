@@ -1,6 +1,6 @@
 //! End-to-End Live Probe for MovieBox Search and Stream Resolution
 
-use pstream_shared::extractors::moviebox::{extract_stream_from_html, SearchResponse};
+use streams_shared::extractors::moviebox::{extract_stream_from_html, SearchResponse};
 use std::time::Duration;
 
 #[tokio::test]

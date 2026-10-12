@@ -6,7 +6,7 @@ Run this from anywhere — it always scans its own folder:
     python update_file_tree.py
 
 Or point it at a specific folder:
-    python update_file_tree.py /path/to/pstream-frontend
+    python update_file_tree.py /path/to/streams-frontend
 
 Updates file_tree_frondend.txt automatically every time. Each text/code file
 is annotated with its line count; a summary breakdown by extension (file
@@ -167,8 +167,8 @@ def build_extension_summary(by_ext: dict) -> list:
 
 def main():
     # Accept optional path argument; default to the folder this script lives
-    # in (not the shell's CWD) — running it from the parent `pstream/` repo
-    # was scanning that parent instead of pstream-frontend.
+    # in (not the shell's CWD) — running it from the parent `streams/` repo
+    # was scanning that parent instead of streams-frontend.
     root = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else Path(__file__).resolve().parent
 
     if not root.exists():

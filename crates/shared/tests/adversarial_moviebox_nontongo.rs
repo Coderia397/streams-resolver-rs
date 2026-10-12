@@ -1,10 +1,10 @@
 //! Empirical Adversarial Test Suite for MovieBox parser and NontonGo bypass (Milestone 1).
 
-use pstream_shared::extractors::moviebox::{
+use streams_shared::extractors::moviebox::{
     extract_stream_from_html, SearchItem, SearchResponse,
 };
-use pstream_shared::extractors::nontongo;
-use pstream_shared::models::MediaKind;
+use streams_shared::extractors::nontongo;
+use streams_shared::models::MediaKind;
 use std::time::Instant;
 
 // =========================================================================

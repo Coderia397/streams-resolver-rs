@@ -1,7 +1,7 @@
-# Copy to ~/.pstream-env on the device and fill in. Never commit the real file.
+# Copy to ~/.streams-env on the device and fill in. Never commit the real file.
 #
-#   cp pstream-env.example ~/.pstream-env
-#   chmod 600 ~/.pstream-env
+#   cp streams-env.example ~/.streams-env
+#   chmod 600 ~/.streams-env
 #
 # Every value is optional. Without one, the feature that needs it reports
 # itself unconfigured rather than the resolver failing to start.

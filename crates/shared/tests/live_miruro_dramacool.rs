@@ -1,5 +1,5 @@
-use pstream_shared::extractors::{dramacool, miruro};
-use pstream_shared::models::MediaKind;
+use streams_shared::extractors::{dramacool, miruro};
+use streams_shared::models::MediaKind;
 
 #[tokio::test]
 #[ignore]

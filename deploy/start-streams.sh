@@ -1,7 +1,7 @@
 #!/data/data/com.termux/files/usr/bin/sh
 # Auto-start the resolver + named tunnel on phone boot (Termux:Boot).
 #
-# Install to ~/.termux/boot/start-pstream.sh with mode 700. See deploy/README.md.
+# Install to ~/.termux/boot/start-streams.sh with mode 700. See deploy/README.md.
 #
 # Three supervised loops, because nothing on Android restarts a crashed
 # background process. Everything here once ran detached at PPid 1, so a single
@@ -20,23 +20,23 @@ export PATH=$PREFIX/bin:$PATH
 export LD_LIBRARY_PATH=$PREFIX/lib
 export HOME=/data/data/com.termux/files/home
 
-# Secrets live outside the repo. Create ~/.pstream-env from
-# deploy/pstream-env.example — without it the resolver still starts, and the
+# Secrets live outside the repo. Create ~/.streams-env from
+# deploy/streams-env.example — without it the resolver still starts, and the
 # features needing a key report themselves unconfigured.
-[ -f "$HOME/.pstream-env" ] && . "$HOME/.pstream-env"
+[ -f "$HOME/.streams-env" ] && . "$HOME/.streams-env"
 
-BIN=$HOME/pstream-resolver-rs
-RELEASE=https://github.com/Coderia397/pstream-resolver-rs/releases/latest/download
+BIN=$HOME/streams-resolver-rs
+RELEASE=https://github.com/Coderia397/streams-resolver-rs/releases/latest/download
 PORT=8790
 
 # ── don't start a second copy ────────────────────────────────────────────────
 # Use pidof, not pgrep. Termux ships procps-ng, whose pgrep matches the FULL
 # process name, while /proc/*/comm truncates to 15 characters — so
-# `pgrep -x pstream-resolve` silently matches nothing and the guard never
+# `pgrep -x streams-resolve` silently matches nothing and the guard never
 # fires. Verified on device:
-#   pgrep -x pstream-resolve    -> (nothing)
-#   pidof pstream-resolver-rs   -> the resolver pid, and only that
-if pidof pstream-resolver-rs > /dev/null 2>&1; then
+#   pgrep -x streams-resolve    -> (nothing)
+#   pidof streams-resolver-rs   -> the resolver pid, and only that
+if pidof streams-resolver-rs > /dev/null 2>&1; then
     echo "[boot] a resolver is already running; not starting a second set" >&2
     exit 0
 fi
@@ -63,7 +63,7 @@ sleep 3
 setsid sh -c "
     while true; do
         cloudflared tunnel --protocol http2 run \
-            --url http://localhost:$PORT pstream-resolver \
+            --url http://localhost:$PORT streams-resolver \
             >> '$HOME/tunnel.log' 2>&1
         echo \"[supervisor] tunnel exited (\$?), restarting\" >> '$HOME/tunnel.log'
         sleep 5
@@ -91,7 +91,7 @@ setsid sh -c '
     while true; do
         sleep 300
 
-        WANT=$(curl -fsSL --max-time 30 "$RELEASE/pstream-resolver-aarch64.sha256" 2>/dev/null | tr -d "[:space:]")
+        WANT=$(curl -fsSL --max-time 30 "$RELEASE/streams-resolver-aarch64.sha256" 2>/dev/null | tr -d "[:space:]")
         [ -n "$WANT" ] || continue
 
         HAVE=$(sha256sum "$BIN" 2>/dev/null | cut -d" " -f1)
@@ -99,7 +99,7 @@ setsid sh -c '
         # Download only when the published build differs from our copy.
         if [ "$WANT" != "$HAVE" ]; then
             echo "[updater] $(date +%FT%T) new build ${WANT%%??????????????????????????????????????????????}" >> "$LOG"
-            if curl -fsSL --max-time 300 -o "$HOME/.res.new" "$RELEASE/pstream-resolver-aarch64" 2>/dev/null; then
+            if curl -fsSL --max-time 300 -o "$HOME/.res.new" "$RELEASE/streams-resolver-aarch64" 2>/dev/null; then
                 GOT=$(sha256sum "$HOME/.res.new" 2>/dev/null | cut -d" " -f1)
                 if [ "$GOT" = "$WANT" ]; then
                     chmod 755 "$HOME/.res.new"
@@ -123,13 +123,13 @@ setsid sh -c '
         # on the installed binary. Comparing the executable the process holds
         # against the file on disk catches the case the old logic could not:
         # readlink reports "(deleted)" once the inode has been replaced.
-        PID=$(pidof pstream-resolver-rs 2>/dev/null | tr " " "\n" | head -1)
+        PID=$(pidof streams-resolver-rs 2>/dev/null | tr " " "\n" | head -1)
         if [ -n "$PID" ]; then
             EXE=$(readlink /proc/$PID/exe 2>/dev/null)
             case "$EXE" in
                 *"(deleted)")
                     echo "[updater] $(date +%FT%T) running process is on a replaced inode, bouncing" >> "$LOG"
-                    kill $(pidof pstream-resolver-rs 2>/dev/null)
+                    kill $(pidof streams-resolver-rs 2>/dev/null)
                     ;;
             esac
         else
