@@ -18,6 +18,7 @@ pub mod probe;
 
 pub mod ratelimit;
 pub mod subdl;
+pub mod subsource;
 pub mod utils;
 pub mod youtube;
 

@@ -12,7 +12,7 @@ use axum::{
     Json, Router,
 };
 use streams_shared::{
-    cache, cors, extractors, health, probe, ratelimit, subdl, utils,
+    cache, cors, extractors, health, probe, ratelimit, subdl, subsource, utils,
     youtube, MediaKind, ProviderResult, Source,
 };
 use serde::Deserialize;
@@ -73,7 +73,7 @@ async fn api_version(headers: HeaderMap) -> Response {
         "version": env!("GIT_HASH"),
         "started": *STARTED,
         "host": host,
-        "settings": { "subdl": set("SUBDL_API_KEY"), "deploy": set("DEPLOY_SECRET"), "proxy": set("RESIDENTIAL_PROXY_URL") },
+        "settings": { "subdl": set("SUBDL_API_KEY"), "subsource": true, "deploy": set("DEPLOY_SECRET"), "proxy": set("RESIDENTIAL_PROXY_URL") },
     }))
 }
 
@@ -276,6 +276,8 @@ async fn api_providers_health(headers: HeaderMap) -> Response {
     push(extractors::flickystream::ID, "FlickyStream ⚡", true, "");
     push(extractors::spencerdevs::ID, "SpencerDevs 🚀", true, "");
     push(extractors::vixsrc::ID, "VixSrc ⚡", true, "");
+    push(extractors::vidflix::ID, extractors::vidflix::NAME, true, "");
+    push(extractors::arc018::ID, extractors::arc018::NAME, true, "");
     push(extractors::moviebox::ID, "MovieBox 📦", true, "");
     push(
         extractors::nontongo::ID,
@@ -347,12 +349,77 @@ async fn api_subdl(headers: HeaderMap, Query(p): Query<SubdlQuery>) -> Response 
         );
     }
 
-    let body = subdl::search(subdl::SearchArgs {
+    let is_tv = p.kind.as_deref() == Some("tv");
+    let season = p.season.unwrap_or(1).min(9_999);
+    let episode = p.episode.unwrap_or(1).min(99_999);
+    let langs = p.langs.unwrap_or_else(|| "EN".to_string());
+
+    let mut body = subdl::search(subdl::SearchArgs {
         tmdb_id: &tmdb_id,
-        is_tv: p.kind.as_deref() == Some("tv"),
-        season: p.season.unwrap_or(1).min(9_999),
-        episode: p.episode.unwrap_or(1).min(99_999),
-        langs: &p.langs.unwrap_or_else(|| "EN".to_string()),
+        is_tv,
+        season,
+        episode,
+        langs: &langs,
+    })
+    .await;
+
+    // Resilient fallback: If SubDL returned 0 subtitles or failed, fall back to SubSource
+    let has_subs = body
+        .get("subtitles")
+        .and_then(|s| s.as_array())
+        .map(|a| !a.is_empty())
+        .unwrap_or(false);
+
+    if !has_subs {
+        let subsource_body = subsource::search(subsource::SearchArgs {
+            tmdb_id: &tmdb_id,
+            is_tv,
+            season,
+            episode,
+            langs: &langs,
+        })
+        .await;
+
+        let has_subsource_subs = subsource_body
+            .get("subtitles")
+            .and_then(|s| s.as_array())
+            .map(|a| !a.is_empty())
+            .unwrap_or(false);
+
+        if has_subsource_subs {
+            body = subsource_body;
+        }
+    }
+
+    ok_json(&headers, body)
+}
+
+// ── /api/subtitles/subsource ─────────────────────────────────────────────────
+
+async fn api_subsource(headers: HeaderMap, Query(p): Query<SubdlQuery>) -> Response {
+    if let Some(refused) = members_only(&headers).await {
+        return refused;
+    }
+    let tmdb_id = p.tmdb_id.unwrap_or_default();
+    if !is_numeric_within(&tmdb_id, 12) {
+        return err_json(
+            &headers,
+            StatusCode::BAD_REQUEST,
+            json!({ "subtitles": [], "error": "tmdbId must be numeric" }),
+        );
+    }
+
+    let is_tv = p.kind.as_deref() == Some("tv");
+    let season = p.season.unwrap_or(1).min(9_999);
+    let episode = p.episode.unwrap_or(1).min(99_999);
+    let langs = p.langs.unwrap_or_else(|| "EN".to_string());
+
+    let body = subsource::search(subsource::SearchArgs {
+        tmdb_id: &tmdb_id,
+        is_tv,
+        season,
+        episode,
+        langs: &langs,
     })
     .await;
 
@@ -451,6 +518,7 @@ async fn main() {
         .route("/api/stream", get(api_stream))
         .route("/api/youtube/search", get(api_youtube))
         .route("/api/subtitles/subdl", get(api_subdl))
+        .route("/api/subtitles/subsource", get(api_subsource))
         .route("/api/providers/health", get(api_providers_health))
 
         .route("/api/media-probe", get(media_probe))

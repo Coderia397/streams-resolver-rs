@@ -33,6 +33,8 @@ pub mod cineby;
 pub mod flickystream;
 pub mod spencerdevs;
 pub mod vixsrc;
+pub mod vidflix;
+pub mod arc018;
 
 /// Which shared client a provider goes out through. Most need the residential
 /// path because their CDNs block datacenter ranges; the ones on Cloudflare
@@ -134,6 +136,8 @@ pub async fn run_all_with_lang(
                     let _hydrahd = timed(hydrahd::ID, hydrahd::scrape(tmdb_id, kind, season, episode, title, year));
     let _sixtysevenmovies = timed(sixtysevenmovies::ID, sixtysevenmovies::scrape(tmdb_id, kind, season, episode, title, year));
     let _cineby = timed(cineby::ID, cineby::scrape(tmdb_id, kind, season, episode, title, year));
+    let _vidflix = timed(vidflix::ID, vidflix::scrape(tmdb_id, kind, season, episode, title, year));
+    let _arc018 = timed(arc018::ID, arc018::scrape(tmdb_id, kind, season, episode, title, year));
     let _flickystream = timed(flickystream::ID, flickystream::scrape(tmdb_id, kind, season, episode, title, year));
     let _spencerdevs = timed(spencerdevs::ID, spencerdevs::scrape(tmdb_id, kind, season, episode, title, year));
     let vixsrc = timed(vixsrc::ID, vixsrc::scrape(tmdb_id, kind, season, episode));
@@ -163,20 +167,21 @@ pub async fn run_all_with_lang(
 
     let nontongo = async { None }; // Disabled 2026-08-26: returning 504 Gateway Timeout
 
-    let (vixsrc, _oneshows, _cinemaarmyext, _bingeflix, _bcine, _apexmovies, _hydrahd, _sixtysevenmovies, _cineby, _flickystream, _spencerdevs, cinemaos, bstsrs, dramacool, miruro, table, moviebox, nontongo) =
-        futures::join!(vixsrc, _oneshows, _cinemaarmyext, _bingeflix, _bcine, _apexmovies, _hydrahd, _sixtysevenmovies, _cineby, _flickystream, _spencerdevs, cinemaos, bstsrs, dramacool, miruro, table, moviebox, nontongo);
+    let (vixsrc, _oneshows, _cinemaarmyext, _bingeflix, _bcine, _apexmovies, _hydrahd, _sixtysevenmovies, _cineby, _vidflix, _arc018, _flickystream, _spencerdevs, cinemaos, bstsrs, dramacool, miruro, table, moviebox, nontongo) =
+        futures::join!(vixsrc, _oneshows, _cinemaarmyext, _bingeflix, _bcine, _apexmovies, _hydrahd, _sixtysevenmovies, _cineby, _vidflix, _arc018, _flickystream, _spencerdevs, cinemaos, bstsrs, dramacool, miruro, table, moviebox, nontongo);
 
-    // Order matches the JS list: vixsrc, cinemaos, bstsrs, dramacool, miruro,
-    // then table providers, moviebox, and nontongo.
-    let mut results: Vec<ProviderResult> = std::iter::once(vixsrc)
+    // Prioritize providers verified playable in the browser without CORS/Referer blocks:
+    // Arc018 comes first with open CORS and direct 1080p manifests.
+    // Cineby and Vidflix are placed last so origin-restricted CDNs never stall playback.
+    let mut results: Vec<ProviderResult> = std::iter::once(_arc018)
+        .chain(std::iter::once(vixsrc))
         .chain(std::iter::once(_oneshows))
-                .chain(std::iter::once(_cinemaarmyext))
-                        .chain(std::iter::once(_bingeflix))
+        .chain(std::iter::once(_cinemaarmyext))
+        .chain(std::iter::once(_bingeflix))
         .chain(std::iter::once(_bcine))
         .chain(std::iter::once(_apexmovies))
-                                        .chain(std::iter::once(_hydrahd))
+        .chain(std::iter::once(_hydrahd))
         .chain(std::iter::once(_sixtysevenmovies))
-        .chain(std::iter::once(_cineby))
         .chain(std::iter::once(_flickystream))
         .chain(std::iter::once(_spencerdevs))
         .chain(std::iter::once(cinemaos))
@@ -185,6 +190,8 @@ pub async fn run_all_with_lang(
         .chain(std::iter::once(miruro))
         .chain(table)
         .chain(std::iter::once(moviebox))
+        .chain(std::iter::once(_cineby))
+        .chain(std::iter::once(_vidflix))
         .chain(std::iter::once(nontongo))
         .flatten()
         .collect();
