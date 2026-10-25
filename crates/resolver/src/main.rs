@@ -60,8 +60,21 @@ async fn ping(headers: HeaderMap) -> Response {
     ok_json(&headers, json!({ "ok": true, "service": "local-resolver" }))
 }
 
+/// When this process started, so two machines answering on one tunnel can be told apart.
+static STARTED: std::sync::LazyLock<u64> = std::sync::LazyLock::new(|| {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
+});
+
 async fn api_version(headers: HeaderMap) -> Response {
-    ok_json(&headers, json!({ "version": env!("GIT_HASH") }))
+    // which settings are present (true or false only, never a value) and the machine's name, for telling instances apart
+    let set = |k: &str| std::env::var(k).map(|v| !v.is_empty()).unwrap_or(false);
+    let host = std::fs::read_to_string("/proc/sys/kernel/hostname").map(|h| h.trim().to_string()).unwrap_or_default();
+    ok_json(&headers, json!({
+        "version": env!("GIT_HASH"),
+        "started": *STARTED,
+        "host": host,
+        "settings": { "subdl": set("SUBDL_API_KEY"), "deploy": set("DEPLOY_SECRET"), "proxy": set("RESIDENTIAL_PROXY_URL") },
+    }))
 }
 
 /// `/api/media-probe` reads the first 2 MB of any address it is given, so it answers members only.
@@ -425,6 +438,7 @@ async fn api_deploy(headers: HeaderMap) -> Response {
 #[tokio::main]
 async fn main() {
     settings::fill_from_files();
+    let _ = *STARTED;
     let port: u16 = std::env::var("PORT")
         .ok()
         .and_then(|p| p.parse().ok())
