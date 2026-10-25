@@ -372,10 +372,40 @@ pub fn detect_audio_metadata(
     }
 }
 
+/// Whether a browser on streams.watch can load this stream: one GET per host with the site's Origin, remembered a day.
+pub async fn browser_ok(url: &str) -> bool {
+    let Ok(parsed) = reqwest::Url::parse(url) else { return true; };
+    let Some(host) = parsed.host_str() else { return true; };
+    let cache_key = format!("browser_ok:{host}");
+    if let Some(v) = crate::cache::get(&cache_key) {
+        return v.as_bool().unwrap_or(true);
+    }
+    let ok = match crate::http::GIGA
+        .get(url)
+        .header("Origin", "https://streams.watch")
+        .timeout(std::time::Duration::from_secs(4))
+        .send()
+        .await
+    {
+        Ok(r) => {
+            r.status().is_success()
+                && r.headers()
+                    .get("access-control-allow-origin")
+                    .and_then(|v| v.to_str().ok())
+                    .map(|v| v == "*" || v == "https://streams.watch")
+                    .unwrap_or(false)
+        }
+        Err(_) => true, // cannot tell: do not punish
+    };
+    crate::cache::put(cache_key, serde_json::json!(ok), std::time::Duration::from_secs(86_400));
+    ok
+}
+
 /// Compare two `Source` items under the multi-tier hierarchy:
 /// 1. Direct streams (`s.is_direct()`) strictly precede iframe embeds (`s.is_embed()`).
-/// 2. Audio language affinity score strictly precedes quality rank (Original / English / Multi > foreign dub).
-/// 3. Within the same tier and audio affinity, higher quality rank strictly precedes lower quality rank.
+/// 2. Playable streams (`browser_ok == true`) strictly precede unplayable streams (`browser_ok == false`).
+/// 3. Audio language affinity score strictly precedes quality rank (Original / English / Multi > foreign dub).
+/// 4. Within the same tier and audio affinity, higher quality rank strictly precedes lower quality rank.
 pub fn compare_sources_with_lang_adaptive(
     a: &Source,
     b: &Source,
@@ -388,6 +418,13 @@ pub fn compare_sources_with_lang_adaptive(
     if embed_a != embed_b {
         // false (direct) < true (embed) => direct stream sorted first
         return embed_a.cmp(&embed_b);
+    }
+
+    // Playable streams strictly precede unplayable streams (CORS 403 / Origin blocked)
+    let ok_a = a.browser_ok.unwrap_or(true);
+    let ok_b = b.browser_ok.unwrap_or(true);
+    if ok_a != ok_b {
+        return ok_b.cmp(&ok_a);
     }
 
     let score_a = a.audio_score(orig_lang, preferred_lang);

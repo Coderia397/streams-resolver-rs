@@ -363,6 +363,7 @@ async fn test_scrape_empty_or_whitespace_title_returns_none() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_live_search_drama_slug() {
     let slug = search_drama_slug("Squid Game", Some(2021)).await;
     assert_eq!(slug, Some("the-squid-games".to_string()));
@@ -373,6 +374,7 @@ async fn test_live_search_drama_slug() {
 // =========================================================================
 
 #[tokio::test]
+#[ignore]
 async fn test_run_all_aggregator_includes_dramacool() {
     let results = run_all("94796", MediaKind::Tv, 1, 1, Some("Crash Landing on You"), Some(2019)).await;
     let dramacool_res = results.iter().find(|r| r.provider_id == ID);
@@ -390,6 +392,7 @@ async fn test_run_all_aggregator_includes_dramacool() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_dramacool_concurrency_stress() {
     let titles = vec![
         ("93405", MediaKind::Tv, 1, 1, "Squid Game"),
@@ -429,6 +432,7 @@ async fn test_dramacool_concurrency_stress() {
 // =========================================================================
 
 #[tokio::test]
+#[ignore]
 async fn test_live_multidrama_e2e_matrix() {
     struct TestCase {
         name: &'static str,
@@ -587,6 +591,7 @@ async fn test_live_multidrama_e2e_matrix() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_live_dramacool_html_structure_inspection() {
     let url = "https://ww1.dramacool.cx/crash-landing-on-you-episode-1.html";
     let html = get_text_with(

@@ -65,6 +65,7 @@ async fn test_dramacool_extreme_episode_number_safety() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_dramacool_live_valid_resolution_metadata() {
     let test_cases = vec![
         ("Crash Landing on You", "94796", MediaKind::Tv, 1, 1),
@@ -117,6 +118,7 @@ async fn test_dramacool_live_valid_resolution_metadata() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_dramacool_concurrent_stress() {
     let requests = vec![
         ("Crash Landing on You", "94796", MediaKind::Tv, 1, 1, true),

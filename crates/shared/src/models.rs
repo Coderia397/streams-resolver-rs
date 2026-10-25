@@ -57,6 +57,9 @@ pub struct Source {
     /// Whether this stream contains multiple selectable audio tracks.
     #[serde(rename = "isMultiAudio", skip_serializing_if = "Option::is_none")]
     pub is_multi_audio: Option<bool>,
+    /// Whether a web browser on streams.watch can load this stream directly.
+    #[serde(rename = "browserOk", skip_serializing_if = "Option::is_none")]
+    pub browser_ok: Option<bool>,
 }
 
 impl Source {
@@ -75,6 +78,7 @@ impl Source {
             audio_languages: Vec::new(),
             is_original: None,
             is_multi_audio: None,
+            browser_ok: None,
         }
     }
 
@@ -95,6 +99,7 @@ impl Source {
             audio_languages: Vec::new(),
             is_original: None,
             is_multi_audio: None,
+            browser_ok: None,
         }
     }
 

@@ -1442,6 +1442,7 @@ name = "streams-resolver"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "futures",
  "reqwest",
  "serde",
  "serde_json",
@@ -1462,6 +1463,7 @@ dependencies = [
  "hex",
  "hmac",
  "md5",
+ "miniz_oxide",
  "once_cell",
  "pbkdf2",
  "regex",

@@ -213,6 +213,27 @@ async fn api_stream(headers: HeaderMap, Query(q): Query<StreamQuery>) -> Respons
         .flat_map(|r| r.sources.iter().cloned())
         .collect();
 
+    // Check unique direct stream hosts for browser CORS accessibility, all hosts at once (each check waits up to 4 s)
+    let host_of = |s: &Source| reqwest::Url::parse(&s.url).ok().and_then(|u| u.host_str().map(str::to_string));
+    let mut first_url: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+    for s in sources.iter().filter(|s| !s.is_embed()) {
+        if let Some(host) = host_of(s) {
+            first_url.entry(host).or_insert_with(|| s.url.clone());
+        }
+    }
+    let host_map: std::collections::HashMap<String, bool> = futures::future::join_all(
+        first_url.into_iter().map(|(host, url)| async move { (host, utils::browser_ok(&url).await) }),
+    )
+    .await
+    .into_iter()
+    .collect();
+
+    for s in sources.iter_mut().filter(|s| !s.is_embed()) {
+        if let Some(&ok) = host_of(s).and_then(|h| host_map.get(&h)) {
+            s.browser_ok = Some(ok);
+        }
+    }
+
     // Sort cross-provider sources: direct streams first, audio affinity, then descending quality rank.
     sources.sort_by(|a, b| utils::compare_sources_with_lang_adaptive(a, b, orig_lang, Some(preferred_audio)));
 
@@ -354,44 +375,70 @@ async fn api_subdl(headers: HeaderMap, Query(p): Query<SubdlQuery>) -> Response 
     let episode = p.episode.unwrap_or(1).min(99_999);
     let langs = p.langs.unwrap_or_else(|| "EN".to_string());
 
-    let mut body = subdl::search(subdl::SearchArgs {
-        tmdb_id: &tmdb_id,
-        is_tv,
-        season,
-        episode,
-        langs: &langs,
-    })
-    .await;
-
-    // Resilient fallback: If SubDL returned 0 subtitles or failed, fall back to SubSource
-    let has_subs = body
-        .get("subtitles")
-        .and_then(|s| s.as_array())
-        .map(|a| !a.is_empty())
-        .unwrap_or(false);
-
-    if !has_subs {
-        let subsource_body = subsource::search(subsource::SearchArgs {
-            tmdb_id: &tmdb_id,
-            is_tv,
-            season,
-            episode,
-            langs: &langs,
-        })
-        .await;
-
-        let has_subsource_subs = subsource_body
-            .get("subtitles")
-            .and_then(|s| s.as_array())
-            .map(|a| !a.is_empty())
-            .unwrap_or(false);
-
-        if has_subsource_subs {
-            body = subsource_body;
+    let mut body = subdl::search(subdl::SearchArgs { tmdb_id: &tmdb_id, is_tv, season, episode, langs: &langs }).await;
+    let have: std::collections::HashSet<String> = body["subtitles"].as_array().map(|a| a.iter()
+        .filter_map(|s| s["language"].as_str().map(|l| l.to_ascii_uppercase())).collect()).unwrap_or_default();
+    let missing: Vec<&str> = langs.split(',').map(str::trim).filter(|l| !have.contains(&l.to_ascii_uppercase())).collect();
+    if !missing.is_empty() {
+        let extra = subsource::search(subsource::SearchArgs { tmdb_id: &tmdb_id, is_tv, season, episode, langs: &missing.join(",") }).await;
+        if let (Some(a), Some(b)) = (body.get_mut("subtitles").and_then(|s| s.as_array_mut()), extra["subtitles"].as_array()) {
+            a.extend(b.iter().cloned());
         }
     }
 
     ok_json(&headers, body)
+}
+
+// ── /api/subtitles/download ──────────────────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+struct SubtitleDownloadQuery {
+    token: Option<String>,
+}
+
+async fn api_subtitles_download(headers: HeaderMap, Query(q): Query<SubtitleDownloadQuery>) -> Response {
+    if let Some(refused) = members_only(&headers).await {
+        return refused;
+    }
+
+    let Some(token) = q.token.filter(|t| !t.trim().is_empty()) else {
+        return err_json(&headers, StatusCode::BAD_REQUEST, json!({ "error": "token required" }));
+    };
+
+    if !token.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-') || token.len() > 128 {
+        return err_json(&headers, StatusCode::BAD_REQUEST, json!({ "error": "invalid token" }));
+    }
+
+    let url = format!("https://api.subsource.net/v1/subtitle/download/{token}");
+    let resp = match streams_shared::http::GIGA.get(&url)
+        .header("User-Agent", streams_shared::http::random_ua())
+        .timeout(Duration::from_secs(8))
+        .send()
+        .await
+    {
+        Ok(r) if r.status().is_success() => r,
+        _ => return err_json(&headers, StatusCode::BAD_GATEWAY, json!({ "error": "failed to fetch subtitle archive" })),
+    };
+
+    let bytes = match resp.bytes().await {
+        Ok(b) => b,
+        Err(_) => return err_json(&headers, StatusCode::BAD_GATEWAY, json!({ "error": "failed to read archive bytes" })),
+    };
+
+    let raw_bytes = match subsource::extract_srt_from_zip(&bytes) {
+        Some(b) => b,
+        None => return err_json(&headers, StatusCode::UNPROCESSABLE_ENTITY, json!({ "error": "failed to decompress srt from archive" })),
+    };
+
+    let cors_headers = cors::headers_for(&headers);
+    let mut resp_headers = HeaderMap::new();
+    for (k, v) in cors_headers {
+        resp_headers.insert(k, v);
+    }
+    resp_headers.insert("Content-Type", HeaderValue::from_static("application/octet-stream"));
+    resp_headers.insert("Cache-Control", HeaderValue::from_static("private, max-age=86400"));
+
+    (StatusCode::OK, resp_headers, raw_bytes).into_response()
 }
 
 // ── /api/subtitles/subsource ─────────────────────────────────────────────────
@@ -519,6 +566,7 @@ async fn main() {
         .route("/api/youtube/search", get(api_youtube))
         .route("/api/subtitles/subdl", get(api_subdl))
         .route("/api/subtitles/subsource", get(api_subsource))
+        .route("/api/subtitles/download", get(api_subtitles_download))
         .route("/api/providers/health", get(api_providers_health))
 
         .route("/api/media-probe", get(media_probe))

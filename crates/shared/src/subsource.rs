@@ -103,6 +103,142 @@ pub fn from_subsource_lang(name: &str) -> (&'static str, &'static str) {
     }
 }
 
+fn is_subtitle_file(filename: &str) -> bool {
+    let lower = filename.to_ascii_lowercase();
+    (lower.ends_with(".srt") || lower.ends_with(".vtt"))
+        && !lower.starts_with("__macosx")
+        && !lower.starts_with('.')
+        && !lower.ends_with('/')
+}
+
+fn extract_via_central_directory(zip_bytes: &[u8]) -> Option<Vec<u8>> {
+    let len = zip_bytes.len();
+    if len < 22 {
+        return None;
+    }
+
+    // Find EOCD marker b"PK\x05\x06" in last 65k bytes
+    let min_search = len.saturating_sub(65536 + 22);
+    let mut eocd_pos = None;
+    for i in (min_search..=len - 22).rev() {
+        if &zip_bytes[i..i + 4] == b"PK\x05\x06" {
+            eocd_pos = Some(i);
+            break;
+        }
+    }
+    let eocd = eocd_pos?;
+    let cd_size = u32::from_le_bytes(zip_bytes[eocd + 12..eocd + 16].try_into().ok()?) as usize;
+    let cd_offset = u32::from_le_bytes(zip_bytes[eocd + 16..eocd + 20].try_into().ok()?) as usize;
+
+    if cd_offset + cd_size > len {
+        return None;
+    }
+
+    let mut cur = cd_offset;
+    while cur + 46 <= cd_offset + cd_size {
+        if &zip_bytes[cur..cur + 4] != b"PK\x01\x02" {
+            break;
+        }
+        let comp_method = u16::from_le_bytes(zip_bytes[cur + 10..cur + 12].try_into().ok()?);
+        let comp_size = u32::from_le_bytes(zip_bytes[cur + 20..cur + 24].try_into().ok()?) as usize;
+        let fn_len = u16::from_le_bytes(zip_bytes[cur + 28..cur + 30].try_into().ok()?) as usize;
+        let extra_len = u16::from_le_bytes(zip_bytes[cur + 30..cur + 32].try_into().ok()?) as usize;
+        let comm_len = u16::from_le_bytes(zip_bytes[cur + 32..cur + 34].try_into().ok()?) as usize;
+        let local_offset = u32::from_le_bytes(zip_bytes[cur + 42..cur + 46].try_into().ok()?) as usize;
+
+        if cur + 46 + fn_len > len {
+            break;
+        }
+
+        let filename = String::from_utf8_lossy(&zip_bytes[cur + 46..cur + 46 + fn_len]);
+        if is_subtitle_file(&filename) {
+            if local_offset + 30 <= len && &zip_bytes[local_offset..local_offset + 4] == b"PK\x03\x04" {
+                let local_fn_len = u16::from_le_bytes(zip_bytes[local_offset + 26..local_offset + 28].try_into().ok()?) as usize;
+                let local_extra_len = u16::from_le_bytes(zip_bytes[local_offset + 28..local_offset + 30].try_into().ok()?) as usize;
+                let data_start = local_offset + 30 + local_fn_len + local_extra_len;
+                let data_end = data_start + comp_size;
+                if data_end <= len {
+                    let decompressed = match comp_method {
+                        0 => zip_bytes[data_start..data_end].to_vec(),
+                        8 => miniz_oxide::inflate::decompress_to_vec(&zip_bytes[data_start..data_end]).ok()?,
+                        _ => return None,
+                    };
+                    return Some(decompressed);
+                }
+            }
+        }
+
+        cur += 46 + fn_len + extra_len + comm_len;
+    }
+
+    None
+}
+
+fn extract_via_local_headers(zip_bytes: &[u8]) -> Option<Vec<u8>> {
+    let mut cursor = 0;
+    let len = zip_bytes.len();
+
+    while cursor + 30 <= len {
+        if &zip_bytes[cursor..cursor + 4] != b"PK\x03\x04" {
+            break;
+        }
+
+        let comp_method = u16::from_le_bytes(zip_bytes[cursor + 8..cursor + 10].try_into().ok()?);
+        let comp_size = u32::from_le_bytes(zip_bytes[cursor + 18..cursor + 22].try_into().ok()?) as usize;
+        let fn_len = u16::from_le_bytes(zip_bytes[cursor + 26..cursor + 28].try_into().ok()?) as usize;
+        let extra_len = u16::from_le_bytes(zip_bytes[cursor + 28..cursor + 30].try_into().ok()?) as usize;
+
+        let data_start = cursor + 30 + fn_len + extra_len;
+        if data_start > len {
+            break;
+        }
+
+        let filename = if cursor + 30 + fn_len <= len {
+            String::from_utf8_lossy(&zip_bytes[cursor + 30..cursor + 30 + fn_len]).to_string()
+        } else {
+            String::new()
+        };
+
+        if is_subtitle_file(&filename) {
+            let compressed_slice = if comp_size > 0 && data_start + comp_size <= len {
+                &zip_bytes[data_start..data_start + comp_size]
+            } else {
+                &zip_bytes[data_start..]
+            };
+
+            let decompressed = match comp_method {
+                0 => compressed_slice.to_vec(),
+                8 => miniz_oxide::inflate::decompress_to_vec(compressed_slice).ok()?,
+                _ => return None,
+            };
+            return Some(decompressed);
+        }
+
+        if comp_size > 0 && data_start + comp_size <= len {
+            cursor = data_start + comp_size;
+        } else {
+            break;
+        }
+    }
+
+    None
+}
+
+/// Extracts raw bytes of the first .srt or .vtt subtitle file from a raw PK zip archive.
+/// Inspects filenames to skip readme files, directories, and non-subtitle entries.
+/// Returns raw bytes to preserve non-UTF-8 character encodings (e.g. Windows-1256 Arabic, Windows-1251 Cyrillic).
+pub fn extract_srt_from_zip(zip_bytes: &[u8]) -> Option<Vec<u8>> {
+    if zip_bytes.len() < 30 || &zip_bytes[0..4] != b"PK\x03\x04" {
+        return None;
+    }
+
+    if let Some(bytes) = extract_via_central_directory(zip_bytes) {
+        return Some(bytes);
+    }
+
+    extract_via_local_headers(zip_bytes)
+}
+
 /// Strict TV episode matcher: verifies season and episode tokens with word boundaries.
 /// Prevents false positives where episode 1 matches episodes 11 to 19.
 pub fn matches_episode_strict(text: &str, season: u32, episode: u32) -> bool {
@@ -343,10 +479,10 @@ pub async fn search(args: SearchArgs<'_>) -> Value {
             "label": lang_label,
             "hi": hi,
             "release": release,
-            "format": "zip",
+            "format": "srt",
             "fps": null,
-            "url": format!("{API_BASE}/v1/subtitle/download/{token}"),
-            "zip": true,
+            "url": format!("https://resolver.streams.watch/api/subtitles/download?token={token}"),
+            "zip": false,
         }))
     });
 
@@ -410,7 +546,7 @@ mod tests {
 
         let subs = res.get("subtitles").and_then(Value::as_array).unwrap();
         assert!(!subs.is_empty());
-        assert!(subs[0].get("url").and_then(Value::as_str).unwrap().contains("/download/"));
+        assert!(subs[0].get("url").and_then(Value::as_str).unwrap().contains("/api/subtitles/download?token="));
     }
 
     #[tokio::test]
