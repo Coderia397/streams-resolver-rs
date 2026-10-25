@@ -61,6 +61,9 @@ jobs:
           mkdir -p dist
           cp "$BIN" dist/streams-resolver-aarch64
           sha256sum dist/streams-resolver-aarch64 | cut -d' ' -f1 > dist/streams-resolver-aarch64.sha256
+          # the name from before the rename: a phone set up before 2026-10-12 still polls it, and without it stops updating
+          cp dist/streams-resolver-aarch64 dist/pstream-resolver-aarch64
+          cp dist/streams-resolver-aarch64.sha256 dist/pstream-resolver-aarch64.sha256
           echo "sha=$(cat dist/streams-resolver-aarch64.sha256)" >> "$GITHUB_OUTPUT"
           ls -la dist/
 
@@ -80,5 +83,7 @@ jobs:
           files: |
             dist/streams-resolver-aarch64
             dist/streams-resolver-aarch64.sha256
+            dist/pstream-resolver-aarch64
+            dist/pstream-resolver-aarch64.sha256
           # Move the tag so `latest` always points at this build.
           make_latest: true

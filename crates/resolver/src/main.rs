@@ -19,6 +19,8 @@ use serde::Deserialize;
 use serde_json::json;
 use std::time::Duration;
 
+mod members;
+
 const DEFAULT_PORT: u16 = 8790;
 
 /// Resolved URLs stay valid far longer than this (VixSrc playlist tokens live
@@ -34,6 +36,23 @@ fn err_json(req: &HeaderMap, code: StatusCode, v: serde_json::Value) -> Response
     (code, cors::headers_for(req), Json(v)).into_response()
 }
 
+/// Answers the browser's preflight (OPTIONS) on every address with the CORS headers, before routing.
+async fn preflight(req: axum::extract::Request, next: axum::middleware::Next) -> Response {
+    if req.method() == Method::OPTIONS {
+        return (StatusCode::NO_CONTENT, cors::headers_for(req.headers())).into_response();
+    }
+    next.run(req).await
+}
+
+/// The refusal for a request that needs an account and has none (members.rs), or `None` for a member.
+async fn members_only(headers: &HeaderMap) -> Option<Response> {
+    match members::check(headers).await {
+        members::Verdict::Member => None,
+        members::Verdict::Refused => Some(err_json(headers, StatusCode::UNAUTHORIZED, json!({ "success": false, "error": "sign_in_required" }))),
+        members::Verdict::Unavailable => Some(err_json(headers, StatusCode::SERVICE_UNAVAILABLE, json!({ "success": false, "error": "account_check_unavailable" }))),
+    }
+}
+
 // ── /  and  /api/ping ────────────────────────────────────────────────────────
 
 async fn ping(headers: HeaderMap) -> Response {
@@ -42,6 +61,14 @@ async fn ping(headers: HeaderMap) -> Response {
 
 async fn api_version(headers: HeaderMap) -> Response {
     ok_json(&headers, json!({ "version": env!("GIT_HASH") }))
+}
+
+/// `/api/media-probe` reads the first 2 MB of any address it is given, so it answers members only.
+async fn media_probe(headers: HeaderMap, q: Query<probe::ProbeQuery>) -> Response {
+    if let Some(refused) = members_only(&headers).await {
+        return refused;
+    }
+    probe::media_probe(q).await
 }
 
 // ── /api/stream ──────────────────────────────────────────────────────────────
@@ -72,6 +99,9 @@ fn is_numeric_within(s: &str, max_digits: usize) -> bool {
 }
 
 async fn api_stream(headers: HeaderMap, Query(q): Query<StreamQuery>) -> Response {
+    if let Some(refused) = members_only(&headers).await {
+        return refused;
+    }
     let tmdb_id = q.tmdb_id.unwrap_or_default();
     if !is_numeric_within(&tmdb_id, 12) {
         return err_json(
@@ -258,6 +288,9 @@ struct YoutubeQuery {
 }
 
 async fn api_youtube(headers: HeaderMap, Query(p): Query<YoutubeQuery>) -> Response {
+    if let Some(refused) = members_only(&headers).await {
+        return refused;
+    }
     let query = p.q.unwrap_or_default();
     if query.is_empty() {
         return err_json(
@@ -288,6 +321,9 @@ struct SubdlQuery {
 }
 
 async fn api_subdl(headers: HeaderMap, Query(p): Query<SubdlQuery>) -> Response {
+    if let Some(refused) = members_only(&headers).await {
+        return refused;
+    }
     let tmdb_id = p.tmdb_id.unwrap_or_default();
     if !is_numeric_within(&tmdb_id, 12) {
         return err_json(
@@ -401,7 +437,7 @@ async fn main() {
         .route("/api/subtitles/subdl", get(api_subdl))
         .route("/api/providers/health", get(api_providers_health))
 
-        .route("/api/media-probe", get(probe::media_probe))
+        .route("/api/media-probe", get(media_probe))
         .route("/api/deploy", post(api_deploy))
         .fallback(|method: Method, headers: HeaderMap, uri: axum::http::Uri| async move {
             if method == Method::OPTIONS {
@@ -413,7 +449,10 @@ async fn main() {
                 StatusCode::NOT_FOUND,
                 json!({ "success": false, "error": "not_found" }),
             )
-        });
+        })
+        // a browser asks first (OPTIONS) before a request that carries a token; the fallback above only sees addresses with no route,
+        // so on /api/stream the question was answered 405 and the browser never sent the request (2026-10-25)
+        .layer(axum::middleware::from_fn(preflight));
 
     let addr = format!("0.0.0.0:{port}");
     let listener = match tokio::net::TcpListener::bind(&addr).await {

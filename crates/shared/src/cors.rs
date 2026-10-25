@@ -56,7 +56,7 @@ fn is_allowed(origin: &str) -> bool {
 ///
 /// `Vary: Origin` matters because the response differs per origin — without
 /// it any cache in front of this would serve one origin's headers to another.
-pub fn headers_for(req: &HeaderMap) -> [(HeaderName, HeaderValue); 4] {
+pub fn headers_for(req: &HeaderMap) -> [(HeaderName, HeaderValue); 5] {
     let origin = req.get(header::ORIGIN).and_then(|v| v.to_str().ok());
 
     // No Origin at all means a non-browser client; nothing to protect against
@@ -82,6 +82,9 @@ pub fn headers_for(req: &HeaderMap) -> [(HeaderName, HeaderValue); 4] {
             HeaderValue::from_static("Content-Type, X-Deploy-Secret, Authorization, Range"),
         ),
         (header::VARY, HeaderValue::from_static("Origin")),
+        // the app sends its account token on every stream request, which makes the browser ask first (a preflight); without this the
+        // browser asks again before almost every request (Chrome keeps the answer 5 s by default, at most 2 h)
+        (header::ACCESS_CONTROL_MAX_AGE, HeaderValue::from_static("7200")),
     ]
 }
 
