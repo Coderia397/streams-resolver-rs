@@ -54,6 +54,18 @@ cp start-streams.sh ~/.termux/boot/start-streams.sh
 chmod 700 ~/.termux/boot/start-streams.sh
 ```
 
+Keep only this one file in `~/.termux/boot`. Termux:Boot runs **every** file in
+that folder at boot, backups included: on the first phone five old copies
+(`start-pstream.sh.bak`, `.node-era` ...) ran next to the current script, which
+gave six tunnels, two resolvers racing for the port (only one of them had the
+SubDL key), two updaters and two loops pulling the old Node repository every two
+minutes (found and cleaned on 2026-10-25; the copies are in `~/boot-old`).
+Keep settings in `~/.streams-env`, not inside a boot script.
+
+The first phone predates the rename and still runs `start-pstream.sh`: binary
+`~/pstream-resolver-rs`, tunnel `pstream-resolver`, settings `~/.pstream-env`,
+release asset `pstream-resolver-aarch64` (the release publishes both names).
+
 **8. First binary** — the updater only replaces an existing file, so seed it:
 
 ```sh
