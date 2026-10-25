@@ -20,6 +20,7 @@ use serde_json::json;
 use std::time::Duration;
 
 mod members;
+mod settings;
 
 const DEFAULT_PORT: u16 = 8790;
 
@@ -423,6 +424,7 @@ async fn api_deploy(headers: HeaderMap) -> Response {
 
 #[tokio::main]
 async fn main() {
+    settings::fill_from_files();
     let port: u16 = std::env::var("PORT")
         .ok()
         .and_then(|p| p.parse().ok())
