@@ -47,10 +47,9 @@ fn setting(name: &str, default: &str) -> String {
     std::env::var(name).ok().filter(|v| !v.trim().is_empty()).unwrap_or_else(|| default.to_string())
 }
 
-/// Whether the account check is on. Off until the web app sending the token is live everywhere (step 1 of 3, 2026-10-25):
-/// `REQUIRE_ACCOUNT=true` turns it on; the next release makes on the default.
+/// Whether the account check is on (it is, unless `REQUIRE_ACCOUNT` says false, 0, off or no).
 pub fn required() -> bool {
-    matches!(std::env::var("REQUIRE_ACCOUNT").unwrap_or_default().trim().to_ascii_lowercase().as_str(), "true" | "1" | "on" | "yes")
+    !matches!(std::env::var("REQUIRE_ACCOUNT").unwrap_or_default().trim().to_ascii_lowercase().as_str(), "false" | "0" | "off" | "no")
 }
 
 /// The bearer token of a request, if it carries one.

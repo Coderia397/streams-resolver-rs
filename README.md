@@ -104,7 +104,7 @@ protocols cannot be worked around at all — that needs a different connection.
 | `RESIDENTIAL_PROXY_URL` | providers are reached directly |
 | `DEPLOY_SECRET` | `/api/deploy` answers 404 rather than advertising itself |
 | `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` | the Streams project (both public values) |
-| `REQUIRE_ACCOUNT` | open for now; `true` makes the member routes refuse requests without an account (the next release makes that the default) |
+| `REQUIRE_ACCOUNT` | members only; `false` opens the member routes to anyone |
 | `ALLOWED_ORIGINS`, `CANONICAL_ORIGIN` | streams.watch and its preview hosts |
 
 ## License
