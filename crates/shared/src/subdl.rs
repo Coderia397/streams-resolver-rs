@@ -73,6 +73,9 @@ pub async fn search(args: SearchArgs<'_>) -> Value {
 /// SubDL's list as the player wants it (see `search`).
 pub fn normalise(raw: &[Value], is_tv: bool, season: u32, episode: u32) -> Vec<Value> {
     let text = |v: &Value, k: &str| v.get(k).and_then(Value::as_str).unwrap_or("").trim().to_string();
+    // SubDL writes the API key into the file addresses it returns (`?api_key=...`); downloads work without it (300 a day per viewer),
+    // so everything after `?` is dropped and the key never reaches a browser
+    let path_of = |v: &Value| text(v, "url").split('?').next().unwrap_or("").to_string();
     let mut found: Vec<(String, Value)> = Vec::new();
     for s in raw {
         let language = text(s, "language").to_ascii_uppercase();
@@ -84,7 +87,7 @@ pub fn normalise(raw: &[Value], is_tv: bool, season: u32, episode: u32) -> Vec<V
         let files = s.get("unpack_files").and_then(Value::as_array).cloned().unwrap_or_default();
         let mut added = false;
         for f in &files {
-            let path = text(f, "url");
+            let path = path_of(f);
             let format = text(f, "format").to_ascii_lowercase();
             if path.is_empty() || !matches!(format.as_str(), "srt" | "vtt" | "") {
                 continue;
@@ -105,7 +108,7 @@ pub fn normalise(raw: &[Value], is_tv: bool, season: u32, episode: u32) -> Vec<V
             })));
             added = true;
         }
-        let path = text(s, "url");
+        let path = path_of(s);
         if !added && !path.is_empty() && !(is_tv && s.get("full_season").and_then(Value::as_bool).unwrap_or(false)) {
             found.push((language.clone(), json!({
                 "language": language, "label": label, "hi": s.get("hi").and_then(Value::as_bool).unwrap_or(false),
@@ -142,9 +145,9 @@ mod tests {
         let raw = vec![
             json!({ "language": "EN", "lang": "English", "url": "/subtitle/1-1.zip", "full_season": true, "hi": false,
                     "unpack_files": [ { "url": "/subtitle/1/a", "season": 1, "episode": 1, "format": "srt", "hi": false, "release_name": "S01E01" },
-                                      { "url": "/subtitle/1/b", "season": 1, "episode": 2, "format": "srt", "hi": false } ] }),
+                                      { "url": "/subtitle/1/b?api_key=secret", "season": 1, "episode": 2, "format": "srt", "hi": false } ] }),
             json!({ "language": "EN", "lang": "English", "url": "/subtitle/2-2.zip", "hi": true }),
-            json!({ "language": "EN", "lang": "English", "url": "/subtitle/3-3.zip", "hi": false }),
+            json!({ "language": "EN", "lang": "English", "url": "/subtitle/3-3.zip?api_key=secret", "hi": false }),
             json!({ "language": "EN", "lang": "English", "url": "/subtitle/4-4.zip", "hi": false }),
             json!({ "language": "FR", "lang": "French", "url": "/subtitle/5-5.zip", "hi": false }),
         ];
@@ -152,5 +155,6 @@ mod tests {
         let urls: Vec<&str> = out.iter().map(|v| v["url"].as_str().unwrap()).collect();
         assert_eq!(urls, ["https://dl.subdl.com/subtitle/1/a", "https://dl.subdl.com/subtitle/3-3.zip", "https://dl.subdl.com/subtitle/4-4.zip", "https://dl.subdl.com/subtitle/5-5.zip"]);
         assert_eq!(out[0]["zip"], false);
+        assert!(out.iter().all(|v| !v["url"].as_str().unwrap().contains("api_key")));
     }
 }
